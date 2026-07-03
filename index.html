@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>中国历史疆域图</title>
+<script>document.documentElement.dataset.theme = localStorage.getItem('hmap-theme') || 'dark';</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;900&display=swap" rel="stylesheet">
 <style>
@@ -15,8 +16,28 @@
     --ink-2: #b3a888;
     --ink-3: #7d745e;
     --accent: #bb8a29;
-    --neutral-land: #2e2a23;
+    --accent-ink: #1a1608;
+    --track-edge: #55471f;
+    --card-bg: rgba(30, 27, 21, .92);
+    --card-hl: rgba(232, 220, 192, .08);
+    --shadow: rgba(0, 0, 0, .45);
+    --label-shadow: rgba(0, 0, 0, .85);
     --serif: "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  }
+  :root[data-theme="light"] {
+    --bg: #ece3d0;
+    --bg-raised: #e3d8c1;
+    --line: #c9bb9e;
+    --ink: #3a3021;
+    --ink-2: #6b5d45;
+    --ink-3: #948569;
+    --accent: #9c6f14;
+    --accent-ink: #f7f0dd;
+    --track-edge: #cdbd97;
+    --card-bg: rgba(243, 236, 220, .93);
+    --card-hl: rgba(58, 48, 33, .08);
+    --shadow: rgba(80, 60, 20, .25);
+    --label-shadow: rgba(236, 227, 208, .9);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -32,8 +53,8 @@
 
   /* ---------- header ---------- */
   header {
-    display: flex; align-items: baseline; gap: 14px;
-    padding: 14px 20px 10px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px 10px;
     border-bottom: 1px solid var(--line);
     flex-wrap: wrap;
   }
@@ -43,6 +64,13 @@
   }
   header .sub { font-size: 12px; color: var(--ink-3); letter-spacing: .1em; }
   header .spacer { flex: 1; }
+  #themeBtn {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid var(--line); background: transparent;
+    color: var(--ink-2); font-size: 15px; line-height: 1;
+    cursor: pointer; transition: color .2s, border-color .2s, transform .3s;
+  }
+  #themeBtn:hover { color: var(--ink); border-color: var(--ink-3); transform: rotate(30deg); }
   .toggle {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 13px; color: var(--ink-2); cursor: pointer; user-select: none;
@@ -57,8 +85,8 @@
     width: 14px; height: 14px; border-radius: 50%;
     background: var(--ink-2); transition: transform .25s, background .25s;
   }
-  .toggle input:checked + .track { background: #6b5522; }
-  .toggle input:checked + .track::after { transform: translateX(16px); background: var(--ink); }
+  .toggle input:checked + .track { background: var(--accent); }
+  .toggle input:checked + .track::after { transform: translateX(16px); background: var(--accent-ink); }
 
   /* ---------- map area ---------- */
   #stage { position: relative; flex: 1; min-height: 0; }
@@ -68,50 +96,55 @@
     background: radial-gradient(ellipse 90% 80% at 50% 45%, rgba(60,50,30,.14), transparent 60%),
                 radial-gradient(ellipse 140% 120% at 50% 50%, transparent 55%, rgba(0,0,0,.45));
   }
+  :root[data-theme="light"] #stage::before {
+    background: radial-gradient(ellipse 90% 80% at 50% 45%, rgba(160,130,70,.10), transparent 60%),
+                radial-gradient(ellipse 140% 120% at 50% 50%, transparent 60%, rgba(120,95,45,.22));
+  }
   #overlay { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
   .regime-label {
     position: absolute; transform: translate(-50%, -50%);
     font-weight: 900; letter-spacing: .38em; text-indent: .38em; /* centers spaced glyphs */
     white-space: nowrap; opacity: 0;
     transition: opacity .7s ease;
-    text-shadow: 0 1px 3px rgba(0,0,0,.85), 0 0 14px rgba(0,0,0,.6);
+    text-shadow: 0 1px 3px var(--label-shadow), 0 0 14px var(--label-shadow);
   }
   .capital-mark {
     position: absolute; transform: translate(-50%, -50%);
     font-size: 11px; letter-spacing: .12em; color: var(--ink);
     white-space: nowrap; opacity: 0; transition: opacity .7s ease .15s;
-    text-shadow: 0 1px 2px rgba(0,0,0,.9);
+    text-shadow: 0 1px 2px var(--label-shadow);
   }
   .capital-mark::before {
     content: "◉ "; font-size: 9px; color: var(--ink);
   }
   #overlay.shown .regime-label, #overlay.shown .capital-mark { opacity: 1; }
-  .regime-label { opacity: 0; }
 
   /* ---------- info card ---------- */
   #card {
     position: absolute; top: 14px; right: 14px; z-index: 4;
-    width: 272px; max-width: calc(100% - 28px);
-    background: rgba(30, 27, 21, .92);
+    width: 276px; max-width: calc(100% - 28px);
+    max-height: calc(100% - 60px); overflow-y: auto;
+    background: var(--card-bg);
     border: 1px solid var(--line);
     border-radius: 6px;
     padding: 14px 16px;
     backdrop-filter: blur(4px);
-    box-shadow: 0 6px 24px rgba(0,0,0,.45);
+    box-shadow: 0 6px 24px var(--shadow);
     transition: opacity .3s;
+    scrollbar-width: thin;
   }
   #card .period-title { font-size: 18px; font-weight: 900; letter-spacing: .22em; }
-  #card .period-years { font-size: 12px; color: var(--ink-3); margin: 2px 0 10px; letter-spacing: .08em; }
+  #card .period-years { font-size: 12px; color: var(--ink-3); margin: 2px 0 10px; letter-spacing: .05em; }
   #card ul { list-style: none; }
   #card li {
     display: flex; align-items: baseline; gap: 8px;
-    padding: 4px 6px; margin: 0 -6px; font-size: 13px; border-radius: 4px;
+    padding: 3px 6px; margin: 0 -6px; font-size: 13px; border-radius: 4px;
     color: var(--ink-2); transition: background .2s, color .2s;
   }
-  #card li.active { background: rgba(232,220,192,.08); color: var(--ink); }
+  #card li.active { background: var(--card-hl); color: var(--ink); }
   .chip { width: 10px; height: 10px; border-radius: 2px; flex: none; align-self: center; }
   #card li .r-name { font-weight: 600; color: var(--ink); }
-  #card li .r-years { font-size: 11px; color: var(--ink-3); margin-left: auto; }
+  #card li .r-years { font-size: 11px; color: var(--ink-3); margin-left: auto; white-space: nowrap; }
   #card .detail {
     margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line);
     font-size: 12.5px; line-height: 1.75; color: var(--ink-2);
@@ -125,21 +158,26 @@
   #disclaimer {
     position: absolute; left: 14px; bottom: 10px; z-index: 4;
     font-size: 11px; color: var(--ink-3); letter-spacing: .06em;
-    text-shadow: 0 1px 2px rgba(0,0,0,.8);
+    text-shadow: 0 1px 2px var(--label-shadow);
   }
   #status {
     position: absolute; inset: 0; z-index: 5;
     display: flex; align-items: center; justify-content: center;
     font-size: 14px; letter-spacing: .3em; color: var(--ink-3);
-    background: var(--bg);
+    background: var(--bg); text-align: center; line-height: 2;
   }
 
   /* ---------- timeline ---------- */
   #timeline {
     border-top: 1px solid var(--line);
     background: var(--bg-raised);
-    padding: 12px 20px 14px;
+    padding: 8px 20px 14px;
   }
+  #yearBadge {
+    text-align: center; font-size: 12px; color: var(--ink-3);
+    letter-spacing: .12em; margin-bottom: 4px; min-height: 18px;
+  }
+  #yearBadge b { font-size: 14px; color: var(--ink); font-weight: 600; margin-right: 2px; }
   #slider {
     -webkit-appearance: none; appearance: none;
     width: 100%; height: 22px; background: transparent; cursor: pointer;
@@ -147,22 +185,22 @@
   }
   #slider::-webkit-slider-runnable-track {
     height: 3px; border-radius: 2px;
-    background: linear-gradient(90deg, #55471f, var(--accent), #55471f);
+    background: linear-gradient(90deg, var(--track-edge), var(--accent), var(--track-edge));
   }
   #slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 17px; height: 17px; margin-top: -7px; border-radius: 50%;
     background: var(--ink); border: 3px solid var(--accent);
-    box-shadow: 0 0 0 4px rgba(187,138,41,.18);
+    box-shadow: 0 0 0 4px var(--card-hl);
   }
   #slider::-moz-range-track {
     height: 3px; border-radius: 2px;
-    background: linear-gradient(90deg, #55471f, var(--accent), #55471f);
+    background: linear-gradient(90deg, var(--track-edge), var(--accent), var(--track-edge));
   }
   #slider::-moz-range-thumb {
     width: 11px; height: 11px; border-radius: 50%;
     background: var(--ink); border: 3px solid var(--accent);
-    box-shadow: 0 0 0 4px rgba(187,138,41,.18);
+    box-shadow: 0 0 0 4px var(--card-hl);
   }
   #eras {
     display: flex; gap: 6px; margin-top: 10px;
@@ -170,16 +208,16 @@
   }
   #eras::-webkit-scrollbar { display: none; }
   #eras button {
-    flex: 1 0 auto; min-width: 52px;
-    font-family: var(--serif); font-size: 13px; letter-spacing: .08em;
+    flex: 1 0 auto; min-width: 42px;
+    font-family: var(--serif); font-size: 12.5px; letter-spacing: .06em;
     color: var(--ink-2);
     background: transparent; border: 1px solid var(--line); border-radius: 4px;
-    padding: 6px 10px; cursor: pointer;
+    padding: 6px 8px; cursor: pointer;
     transition: color .2s, border-color .2s, background .2s;
   }
   #eras button:hover { color: var(--ink); border-color: var(--ink-3); }
   #eras button.active {
-    color: #1a1608; background: var(--accent); border-color: var(--accent);
+    color: var(--accent-ink); background: var(--accent); border-color: var(--accent);
     font-weight: 600;
   }
 
@@ -188,10 +226,10 @@
     header h1 { font-size: 17px; }
     header .sub { display: none; }
     #card { top: 8px; left: 8px; right: 8px; width: auto; padding: 10px 12px;
-            max-height: 44%; overflow-y: auto; }
+            max-height: 44%; }
     #card .detail { font-size: 12px; line-height: 1.6; }
     #card .hint { display: none; }
-    #timeline { padding: 10px 12px 12px; }
+    #timeline { padding: 8px 12px 12px; }
     #disclaimer { font-size: 10px; right: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -205,6 +243,7 @@
   <h1>中国历史疆域图</h1>
   <span class="sub">秦 · 前221年 —— 现代</span>
   <span class="spacer"></span>
+  <button id="themeBtn" aria-label="切换明暗主题" title="切换明暗主题">☀</button>
   <label class="toggle">
     <input type="checkbox" id="borderToggle" checked>
     <span class="track"></span>
@@ -221,221 +260,42 @@
 </div>
 
 <div id="timeline">
-  <input type="range" id="slider" min="0" max="12" step="1" value="0" aria-label="历史时期">
+  <div id="yearBadge"></div>
+  <input type="range" id="slider" min="0" max="21" step="1" value="0" aria-label="历史年份">
   <div id="eras"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script>
 /* =====================================================================
- *  数据区:政权 → 现代省份 的映射,直接改这里即可修正疆域划分。
- *  每个政权: name 政权名 / color 色块颜色 / capital 都城(文字)
- *            capCoord 都城坐标 [经,纬] / years 存续年份 / desc 一句话简介
- *            label 政权名标注坐标 [经,纬] / size 标注字号
- *            provinces 该政权覆盖的现代省份(简称)列表
+ *  疆域数据在 territories.json 中(年份断面 → 政权 → 现代省份映射)。
+ *  直接修改该 JSON 文件即可修正疆域划分,字段说明见 README。
  * ===================================================================== */
 
-const C = {  // 分类色板(已在深色底上通过色盲区分度与对比度校验)
-  red:    '#cd6a52',
-  amber:  '#bb8a29',
-  blue:   '#4e93d9',
-  green:  '#84a038',
-  purple: '#b06fd6',
-  teal:   '#2fa38f',
-};
+let ALL = [];        // 省级行政区简称列表(来自 territories.json)
+let SNAPSHOTS = [];  // 年份断面
+let ERAS = [];       // 时期快捷按钮 -> 首个断面索引
+let PALETTE = { dark: {}, light: {} };
 
-const ALL = ['北京','天津','河北','山西','内蒙古','辽宁','吉林','黑龙江','上海','江苏',
-             '浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','广西',
-             '海南','重庆','四川','贵州','云南','西藏','陕西','甘肃','青海','宁夏',
-             '新疆','台湾','香港','澳门'];
+function indexData(data) {
+  ALL = data.provinces;
+  SNAPSHOTS = data.snapshots;
+  PALETTE = data.palette;
+  provOf = SNAPSHOTS.map(s => {
+    const m = {};
+    s.regimes.forEach(r => r.provinces.forEach(p => { m[p] = r; }));
+    return m;
+  });
+  ERAS = [];
+  SNAPSHOTS.forEach((s, i) => {
+    if (!ERAS.length || ERAS[ERAS.length - 1].name !== s.era) ERAS.push({ name: s.era, first: i });
+  });
+}
 
-function allExcept(...ex) { return ALL.filter(p => !ex.includes(p)); }
-
-const PERIODS = [
-  {
-    id: 'qin', name: '秦', years: '前221 – 前207',
-    regimes: [{
-      name: '秦', color: C.amber, capital: '咸阳', capCoord: [108.71, 34.33],
-      years: '前221 – 前207', label: [111.2, 35.2], size: 30,
-      desc: '中国历史上第一个大一统中央集权王朝,书同文、车同轨,北筑长城以御匈奴,南开灵渠而通岭南。',
-      provinces: allExcept('内蒙古','新疆','西藏','青海','云南','吉林','黑龙江','台湾','海南'),
-    }],
-  },
-  {
-    id: 'xihan', name: '西汉', years: '前202 – 公元8',
-    regimes: [{
-      name: '漢', color: C.red, capital: '长安', capCoord: [108.94, 34.26],
-      years: '前202 – 公元8', label: [106.5, 35], size: 30,
-      desc: '承秦制而兴,武帝拓河西、通西域,设西域都护府,丝绸之路自此贯通东西;实际疆域西越葱岭、北逾阴山。',
-      provinces: allExcept('西藏','青海','吉林','黑龙江','台湾'),
-    }],
-  },
-  {
-    id: 'sanguo', name: '三国', years: '220 – 280',
-    regimes: [
-      {
-        name: '魏', color: C.amber, capital: '洛阳', capCoord: [112.45, 34.62],
-        years: '220 – 266', label: [112.5, 37], size: 26,
-        desc: '曹丕代汉建魏,据中原与河北,户口甲于三国,并置西域长史府羁縻西域。',
-        provinces: ['北京','天津','河北','山西','山东','河南','陕西','甘肃','宁夏','辽宁','安徽','新疆'],
-      },
-      {
-        name: '蜀漢', color: C.green, capital: '成都', capCoord: [104.07, 30.66],
-        years: '221 – 263', label: [102.2, 28.6], size: 22,
-        desc: '刘备据益州、汉中以续汉祚,诸葛亮治蜀抚南中,屡出祁山以图中原。',
-        provinces: ['四川','重庆','云南','贵州'],
-      },
-      {
-        name: '吳', color: C.teal, capital: '建业', capCoord: [118.78, 32.06],
-        years: '229 – 280', label: [114.8, 27.6], size: 22,
-        desc: '孙氏三世据江东,凭长江天险立国,经营荆扬、开发江南,遣使远航夷洲。',
-        provinces: ['江苏','上海','浙江','福建','江西','湖北','湖南','广东','香港','澳门','广西','海南'],
-      },
-    ],
-  },
-  {
-    id: 'xijin', name: '西晋', years: '266 – 316',
-    regimes: [{
-      name: '晉', color: C.purple, capital: '洛阳', capCoord: [112.45, 34.62],
-      years: '266 – 316', label: [110.5, 34.5], size: 30,
-      desc: '司马氏代魏灭吴、三分归一,然统一未久即陷八王之乱与永嘉之祸,衣冠南渡。',
-      provinces: allExcept('内蒙古','西藏','青海','吉林','黑龙江','台湾'),
-    }],
-  },
-  {
-    id: 'nanbeichao', name: '南北朝', years: '420 – 589 · 图示约公元500年',
-    regimes: [
-      {
-        name: '北魏', color: C.blue, capital: '平城 → 洛阳(493年迁)', capCoord: [112.45, 34.62],
-        years: '386 – 534', label: [110.8, 38.4], size: 24,
-        desc: '鲜卑拓跋氏统一北方,孝文帝迁都洛阳、行汉化之制,与南朝隔淮对峙。',
-        provinces: ['北京','天津','河北','山西','山东','河南','陕西','甘肃','宁夏','辽宁','内蒙古'],
-      },
-      {
-        name: '南齊', color: C.teal, capital: '建康', capCoord: [118.78, 32.06],
-        years: '479 – 502', label: [112.5, 27.2], size: 24,
-        desc: '萧道成代宋建齐,承东晋以来江左之业,据秦岭—淮河以南与北魏南北分治。',
-        provinces: ['江苏','上海','安徽','浙江','福建','江西','湖北','湖南','广东','香港','澳门','广西','海南','四川','重庆','贵州','云南'],
-      },
-    ],
-  },
-  {
-    id: 'sui', name: '隋', years: '581 – 618',
-    regimes: [{
-      name: '隋', color: C.amber, capital: '大兴(长安)', capCoord: [108.94, 34.26],
-      years: '581 – 618', label: [113.2, 32.6], size: 30,
-      desc: '结束近三百年南北分裂,创科举、凿通大运河,再造大一统之局。',
-      provinces: allExcept('辽宁','吉林','黑龙江','新疆','西藏','青海','内蒙古','台湾'),
-    }],
-  },
-  {
-    id: 'tang', name: '唐', years: '618 – 907 · 图示盛唐',
-    regimes: [{
-      name: '唐', color: C.red, capital: '长安', capCoord: [108.94, 34.26],
-      years: '618 – 907', label: [105.5, 35.2], size: 30,
-      desc: '设安西、北庭、安东、安北诸都护府,万国来朝;实际疆域远超今日国界,西抵咸海、北逾贝加尔。',
-      provinces: allExcept('西藏','青海','黑龙江','台湾'),
-    }],
-  },
-  {
-    id: 'beisong', name: '北宋·辽·夏', years: '约1100年',
-    regimes: [
-      {
-        name: '北宋', color: C.amber, capital: '东京开封府', capCoord: [114.31, 34.80],
-        years: '960 – 1127', label: [112.8, 31.2], size: 24,
-        desc: '结束五代十国之乱,经济文化臻于极盛,与辽澶渊之盟、与夏战和不定。',
-        provinces: ['河北','山西','山东','河南','陕西','江苏','上海','安徽','浙江','福建','江西','湖北','湖南','广东','香港','澳门','广西','海南','四川','重庆','贵州'],
-      },
-      {
-        name: '遼', color: C.blue, capital: '上京临潢府', capCoord: [119.30, 43.97],
-        years: '916 – 1125', label: [121.8, 44.2], size: 22,
-        desc: '契丹耶律氏所建,得燕云十六州,南面官北面官并行,横跨草原与农耕两界。',
-        provinces: ['北京','天津','内蒙古','辽宁','吉林','黑龙江'],
-      },
-      {
-        name: '西夏', color: C.purple, capital: '兴庆府(今银川)', capCoord: [106.23, 38.49],
-        years: '1038 – 1227', label: [101.4, 37.7], size: 18,
-        desc: '党项李元昊称帝,扼河西走廊与丝路要冲,自创西夏文,与宋辽鼎足。',
-        provinces: ['宁夏','甘肃'],
-      },
-      {
-        name: '大理', color: C.green, capital: '大理', capCoord: [100.23, 25.60],
-        years: '937 – 1254', label: [103.4, 24.2], size: 16,
-        desc: '段氏继南诏而据云贵高原,崇佛息兵,号称「妙香佛国」。',
-        provinces: ['云南'],
-      },
-    ],
-  },
-  {
-    id: 'nansong', name: '南宋·金', years: '约1200年',
-    regimes: [
-      {
-        name: '金', color: C.blue, capital: '中都(今北京)', capCoord: [116.40, 39.90],
-        years: '1115 – 1234', label: [114.5, 37.2], size: 24,
-        desc: '女真完颜氏灭辽亡北宋,尽得中原,与南宋以秦岭—淮河一线为界。',
-        provinces: ['北京','天津','河北','山西','山东','河南','陕西','辽宁','吉林','黑龙江','内蒙古'],
-      },
-      {
-        name: '南宋', color: C.amber, capital: '临安(今杭州)', capCoord: [120.16, 30.25],
-        years: '1127 – 1279', label: [111.8, 27.8], size: 24,
-        desc: '宋室南渡偏安江左,海上贸易与江南经济空前繁荣,理学大兴。',
-        provinces: ['江苏','上海','安徽','浙江','福建','江西','湖北','湖南','广东','香港','澳门','广西','海南','四川','重庆','贵州'],
-      },
-      {
-        name: '西夏', color: C.purple, capital: '兴庆府(今银川)', capCoord: [106.23, 38.49],
-        years: '1038 – 1227', label: [101.4, 37.7], size: 18,
-        desc: '党项李元昊所建,扼河西走廊与丝路要冲,自创西夏文,后亡于蒙古。',
-        provinces: ['宁夏','甘肃'],
-      },
-      {
-        name: '大理', color: C.green, capital: '大理', capCoord: [100.23, 25.60],
-        years: '937 – 1254', label: [103.4, 24.2], size: 16,
-        desc: '段氏继南诏而据云贵高原,崇佛息兵,号称「妙香佛国」。',
-        provinces: ['云南'],
-      },
-    ],
-  },
-  {
-    id: 'yuan', name: '元', years: '1271 – 1368',
-    regimes: [{
-      name: '元', color: C.blue, capital: '大都(今北京)', capCoord: [116.40, 39.90],
-      years: '1271 – 1368', label: [103.5, 36], size: 30,
-      desc: '蒙古大汗忽必烈所建,首次将西藏纳入中央政权版图,置行省制;实际疆域北抵西伯利亚,远超今日国界。',
-      provinces: allExcept('台湾'),
-    }],
-  },
-  {
-    id: 'ming', name: '明', years: '1368 – 1644 · 图示永乐年间',
-    regimes: [{
-      name: '明', color: C.red, capital: '北京(1421年自南京迁)', capCoord: [116.40, 39.90],
-      years: '1368 – 1644', label: [110.5, 32.5], size: 30,
-      desc: '驱逐元廷、恢复汉制,永乐间设奴儿干都司经略东北、乌斯藏都司羁縻雪域,郑和七下西洋。',
-      provinces: allExcept('新疆','内蒙古','台湾'),
-    }],
-  },
-  {
-    id: 'qing', name: '清', years: '1644 – 1912 · 图示乾隆年间',
-    regimes: [{
-      name: '清', color: C.amber, capital: '北京', capCoord: [116.40, 39.90],
-      years: '1644 – 1912', label: [103.5, 36], size: 30,
-      desc: '康乾之世奠定近代中国版图,统台湾、定西域、辖藏卫;实际尚领外蒙古、外东北与巴尔喀什湖以东,远超今日国界。',
-      provinces: ALL.slice(),
-    }],
-  },
-  {
-    id: 'modern', name: '现代', years: '1949 – 今',
-    regimes: [{
-      name: '中华人民共和国', color: C.red, capital: '北京', capCoord: [116.40, 39.90],
-      years: '1949 – 今', label: [104, 35.5], size: 22,
-      desc: '1949年成立,现行省级行政区划即为本图之底图,共三十四个省级行政区。',
-      provinces: ALL.slice(),
-    }],
-  },
-];
+const yearText = y => y < 0 ? `前${-y}年` : (y < 1000 ? `公元${y}年` : `${y}年`);
 
 /* ============================ 实现区 ============================ */
 
-const NEUTRAL = '#2e2a23';               // 不属于任何所列政权的区域
 const GEO_URLS = [
   'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
   'https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/json/china.json',
@@ -447,44 +307,61 @@ const ALIAS = {
 };
 const shortName = n => !n ? n : (ALIAS[n] || n.replace(/(省|市)$/, ''));
 
+/* 主题相关的地图着色参数(与 CSS 变量对应) */
+const THEME_CFG = {
+  dark:  { border: 'rgba(232,220,192,.22)', emphBorder: '#e8dcc0',
+           labelMix: [238, 226, 200], labelAmt: .45,
+           emphMix: [238, 226, 200], emphAmt: .18, emphNeutral: '#3a352b' },
+  light: { border: 'rgba(58,48,33,.30)', emphBorder: '#3a3021',
+           labelMix: [40, 30, 14], labelAmt: .35,
+           emphMix: [30, 24, 12], emphAmt: .16, emphNeutral: '#c8b995' },
+};
+
 const $ = id => document.getElementById(id);
 const stage = $('stage'), overlay = $('overlay'), card = $('card'),
-      slider = $('slider'), eras = $('eras'), statusEl = $('status');
+      slider = $('slider'), eras = $('eras'), statusEl = $('status'),
+      themeBtn = $('themeBtn');
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let chart = null;
-let cur = 0;                 // 当前时期索引
+let theme = localStorage.getItem('hmap-theme') || 'dark';
+let cur = 0;                 // 当前断面索引
 let colState = {};           // 省份 -> 当前显示颜色 [r,g,b](动画中间态)
 let animId = null;
 let pinned = null;           // 移动端点选后固定显示的政权
 let showBorders = true;      // 现代省界开关
-let provOf = [];             // 每个时期: 省份 -> 政权 的索引
-
-PERIODS.forEach((p, i) => {
-  provOf[i] = {};
-  p.regimes.forEach(r => r.provinces.forEach(pr => { provOf[i][pr] = r; }));
-});
+let provOf = [];             // 每个断面: 省份 -> 政权 的索引(indexData 中构建)
 
 /* ---------- 颜色工具 ---------- */
 const hex2rgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
 const rgbStr = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
 const lerp3 = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
-const lighten = (h, f) => rgbStr(lerp3(hex2rgb(h), [238, 226, 200], f));
+const mixTo = (hex, target, f) => rgbStr(lerp3(hex2rgb(hex), target, f));
+/* regime.color 是 palette 中的键(明暗主题各取一套),也兼容直接写 #RRGGBB */
+const col = r => PALETTE[theme][r.color] || r.color;
+const neutral = () => PALETTE[theme].neutral || '#2e2a23';
+const labelTone = hex => mixTo(hex, THEME_CFG[theme].labelMix, THEME_CFG[theme].labelAmt);
+const emphTone  = hex => mixTo(hex, THEME_CFG[theme].emphMix,  THEME_CFG[theme].emphAmt);
 
 function targetColors(pi) {
   const t = {};
-  ALL.forEach(p => { const r = provOf[pi][p]; t[p] = hex2rgb(r ? r.color : NEUTRAL); });
+  ALL.forEach(p => { const r = provOf[pi][p]; t[p] = hex2rgb(r ? col(r) : neutral()); });
   return t;
 }
 
 /* ---------- 地图初始化 ---------- */
+function fetchJSON(url, timeout) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  return fetch(url, { signal: ctrl.signal })
+    .then(res => { if (!res.ok) throw new Error(url + ' HTTP ' + res.status); return res.json(); })
+    .finally(() => clearTimeout(timer));
+}
+
 async function fetchGeo() {
   for (const url of GEO_URLS) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(res.status);
-      return await res.json();
-    } catch (e) { console.warn('geojson 源失败,尝试备用源', url, e); }
+    try { return await fetchJSON(url, 15000); }
+    catch (e) { console.warn('geojson 源失败,尝试备用源', url, e); }
   }
   throw new Error('所有地图数据源均不可用');
 }
@@ -505,10 +382,10 @@ function buildChart(geo) {
       layoutCenter: ['50%', '48%'], layoutSize: '108%',
       boundingCoords: [[73, 54], [136, 17.5]],   // 以大陆为构图主体,南海诸岛贴近下缘
       itemStyle: {
-        areaColor: NEUTRAL,
-        borderColor: 'rgba(232,220,192,.22)', borderWidth: 0.6,
+        areaColor: neutral(),
+        borderColor: THEME_CFG[theme].border, borderWidth: 0.6,
       },
-      emphasis: { label: { show: false }, itemStyle: { borderColor: '#e8dcc0', borderWidth: 1.2 } },
+      emphasis: { label: { show: false }, itemStyle: { borderColor: THEME_CFG[theme].emphBorder, borderWidth: 1.2 } },
       label: { show: false },
       data: mapData(),
     }],
@@ -538,23 +415,16 @@ function mapData(emphasisReady = true) {
     }
     if (emphasisReady) {
       const r = provOf[cur][n];
-      item.emphasis = { itemStyle: { areaColor: r ? lighten(r.color, .18) : '#3a352b' } };
+      item.emphasis = { itemStyle: { areaColor: r ? emphTone(col(r)) : THEME_CFG[theme].emphNeutral } };
     }
     return item;
   });
 }
 
-/* ---------- 时期切换(色块平滑过渡) ---------- */
-function switchPeriod(i, instant) {
-  cur = i; pinned = null;
-  slider.value = i;
-  [...eras.children].forEach((b, k) => b.classList.toggle('active', k === i));
-  eras.children[i].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-
-  const from = {}; ALL.forEach(p => from[p] = colState[p].slice());
-  const to = targetColors(i);
+/* ---------- 色块平滑过渡(rAF 插值) ---------- */
+function animateColors(to, instant) {
+  const from = {}; ALL.forEach(p => from[p] = (colState[p] || to[p]).slice());
   cancelAnimationFrame(animId);
-
   const D = (instant || reduceMotion) ? 0 : 700;
   const t0 = performance.now();
   const frame = now => {
@@ -565,7 +435,36 @@ function switchPeriod(i, instant) {
     if (k < 1) animId = requestAnimationFrame(frame);
   };
   animId = requestAnimationFrame(frame);
+}
 
+/* ---------- 断面切换 ---------- */
+function switchPeriod(i, instant) {
+  cur = i; pinned = null;
+  slider.value = i;
+  const snap = SNAPSHOTS[i];
+  let ei = 0;
+  ERAS.forEach((e, k) => { if (e.first <= i) ei = k; });
+  [...eras.children].forEach((b, k) => b.classList.toggle('active', k === ei));
+  eras.children[ei].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  $('yearBadge').innerHTML = `<b>${yearText(snap.year)}</b> · ${snap.label}`;
+
+  animateColors(targetColors(i), instant);
+  renderOverlay();
+  renderCard(null);
+}
+
+/* ---------- 明暗主题 ---------- */
+function applyTheme(t, instant) {
+  theme = t;
+  localStorage.setItem('hmap-theme', t);
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === 'dark' ? '☀' : '☾';
+  if (!chart) return;
+  chart.setOption({ series: [{ id: 'terr',
+    itemStyle: { areaColor: neutral(), borderColor: THEME_CFG[t].border },
+    emphasis: { itemStyle: { borderColor: THEME_CFG[t].emphBorder } },
+  }] });
+  animateColors(targetColors(cur), instant);
   renderOverlay();
   renderCard(null);
 }
@@ -574,7 +473,7 @@ function switchPeriod(i, instant) {
 function renderOverlay() {
   overlay.classList.remove('shown');
   overlay.innerHTML = '';
-  const per = PERIODS[cur];
+  const per = SNAPSHOTS[cur];
   const box = stage.getBoundingClientRect();
   per.regimes.forEach(r => {
     const lp = toPixel(r.label);
@@ -583,11 +482,12 @@ function renderOverlay() {
       el.className = 'regime-label';
       el.textContent = r.name;
       const scale = Math.min(1, box.width / 900);
-      el.style.cssText = `left:${lp[0]}px;top:${lp[1]}px;font-size:${Math.max(13, r.size * scale)}px;color:${lighten(r.color, .45)};`;
+      el.style.cssText = `left:${lp[0]}px;top:${lp[1]}px;font-size:${Math.max(12, (r.size || 14) * scale)}px;color:${labelTone(col(r))};`;
       overlay.appendChild(el);
     }
     const capName = r.capital.replace(/[((].*$/, '');       // 标注只取都城主名
-    const cp = capName === r.name ? null : toPixel(r.capCoord); // 与政权同名(如大理)不重复标注
+    // 与政权同名(如大理)或都城不在图内(capCoord 为 null)时不画标记
+    const cp = (capName === r.name || !r.capCoord) ? null : toPixel(r.capCoord);
     if (cp) {
       const el = document.createElement('div');
       el.className = 'capital-mark';
@@ -608,15 +508,15 @@ function toPixel(lnglat) {
 
 /* ---------- 信息卡片 ---------- */
 function renderCard(hovProv) {
-  const per = PERIODS[cur];
+  const per = SNAPSHOTS[cur];
   const hovRegime = pinned || (hovProv ? provOf[cur][hovProv] : null);
   const outside = hovProv && !hovRegime && !pinned;
 
-  let h = `<div class="period-title">${per.name}</div>
-           <div class="period-years">${per.years}</div><ul>`;
+  let h = `<div class="period-title">${per.era}</div>
+           <div class="period-years">${yearText(per.year)} · ${per.label}</div><ul>`;
   per.regimes.forEach(r => {
     h += `<li class="${r === hovRegime ? 'active' : ''}">
-            <span class="chip" style="background:${r.color}"></span>
+            <span class="chip" style="background:${col(r)}"></span>
             <span class="r-name">${r.name}</span>
             <span class="r-years">${r.years}</span>
           </li>`;
@@ -645,19 +545,23 @@ function renderCard(hovProv) {
 function hoverProvince(name) { renderCard(name); }
 
 /* ---------- 时间轴控件 ---------- */
-PERIODS.forEach((p, i) => {
-  const b = document.createElement('button');
-  b.textContent = p.name;
-  b.addEventListener('click', () => switchPeriod(i));
-  eras.appendChild(b);
-});
-slider.max = PERIODS.length - 1;
+function buildUI() {
+  ERAS.forEach(e => {
+    const b = document.createElement('button');
+    b.textContent = e.name;
+    b.addEventListener('click', () => switchPeriod(e.first));
+    eras.appendChild(b);
+  });
+  slider.max = SNAPSHOTS.length - 1;
+}
 slider.addEventListener('input', () => switchPeriod(+slider.value));
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' && e.target !== slider) return;
-  if (e.key === 'ArrowLeft'  && cur > 0)                 switchPeriod(cur - 1);
-  if (e.key === 'ArrowRight' && cur < PERIODS.length - 1) switchPeriod(cur + 1);
+  if (e.key === 'ArrowLeft'  && cur > 0)                    switchPeriod(cur - 1);
+  if (e.key === 'ArrowRight' && cur < SNAPSHOTS.length - 1) switchPeriod(cur + 1);
 });
+
+themeBtn.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'));
 
 $('borderToggle').addEventListener('change', e => {
   showBorders = e.target.checked;
@@ -678,14 +582,21 @@ window.addEventListener('resize', () => {
 });
 
 /* ---------- 启动 ---------- */
+const fetchTerritories = () => fetchJSON('territories.json', 10000);
+
+applyTheme(theme, true);
 (async () => {
   try {
-    const geo = await fetchGeo();
+    const [geo, data] = await Promise.all([fetchGeo(), fetchTerritories()]);
+    indexData(data);
+    buildUI();
     buildChart(geo);
     statusEl.remove();
     switchPeriod(0, true);
   } catch (err) {
-    statusEl.textContent = '地图数据加载失败,请检查网络后刷新重试';
+    statusEl.textContent = location.protocol === 'file:'
+      ? '疆域数据需通过 HTTP 访问:请在本目录运行 python3 -m http.server 后打开 localhost 页面'
+      : '地图数据加载失败,请检查网络后刷新重试';
     console.error(err);
   }
 })();
